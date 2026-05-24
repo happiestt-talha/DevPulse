@@ -1,22 +1,31 @@
-'use client';
+import { cn } from '@/lib/utils';
 
-import { motion } from 'framer-motion';
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  color?: 'purple' | 'cyan' | 'amber' | 'green' | 'red' | 'default';
+  icon?: React.ReactNode;
+}
 
-export function StatCard({ title, value, icon }: { title: string; value: string | number; icon?: React.ReactNode }) {
+const colorClasses = {
+  purple: 'text-primary',
+  cyan: 'text-cyan',
+  amber: 'text-amber',
+  green: 'text-green',
+  red: 'text-red',
+  default: 'text-textPrimary',
+};
+
+export function StatCard({ title, value, color = 'default', icon }: StatCardProps) {
   return (
-    <motion.div
-      className="bg-surface rounded-xl border border-border p-4 flex flex-col gap-1"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
+    <div className="bg-surface rounded-xl border border-border p-4 hover:border-primary/50 transition-colors">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-textSecondary">{title}</p>
-        {icon && <span className="text-primary">{icon}</span>}
+        <span className="text-textSecondary text-sm">{title}</span>
+        {icon && <div className="text-textSecondary">{icon}</div>}
       </div>
-      <p className="text-2xl font-bold font-mono text-textPrimary">
-        {typeof value === 'number' ? value.toLocaleString() : value}
-      </p>
-    </motion.div>
+      <div className={cn('font-mono text-2xl font-bold mt-2', colorClasses[color])}>
+        {value}
+      </div>
+    </div>
   );
 }

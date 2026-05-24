@@ -9,7 +9,7 @@ from uuid import UUID
 
 async def seed_weekly_challenge(db: AsyncSession):
     """Create a challenge for the current week if none exists."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     # Get Monday of current week
     start_of_week = now - timedelta(days=now.weekday())
     start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -48,7 +48,7 @@ async def seed_weekly_challenge(db: AsyncSession):
 
 async def update_challenge_progress(user_id: UUID, db: AsyncSession, github: GitHubStats, wakatime: WakaTimeStats, leetcode: LeetCodeStats):
     """Update progress for current week's challenge."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     start_of_week = now - timedelta(days=now.weekday())
     start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
     challenge = (await db.execute(select(Challenge).where(Challenge.week_start == start_of_week))).scalar_one_or_none()

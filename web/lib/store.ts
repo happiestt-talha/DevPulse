@@ -14,6 +14,7 @@ interface User {
   developer_score: number;
   wakatime_connected: boolean;
   leetcode_connected: boolean;
+  leetcode_username: string | null;
 }
 
 interface AuthState {

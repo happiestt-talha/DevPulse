@@ -1,50 +1,59 @@
 'use client';
 
 import { useWakaTimeStats } from '@/lib/api';
-import { DonutChart } from '@/components/charts/DonutChart';
-import { BarChart } from '@/components/charts/BarChart';
+import { LineChart } from '@/components/charts/LineChart';
+import { HorizontalBarChart } from '@/components/charts/HorizontalBarChart';
 import { StatCard } from '@/components/stats/StatCard';
-
-function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return `${h}h ${m}m`;
-}
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatDuration } from '@/lib/utils';
 
 export default function WakaTimePage() {
   const { data: stats, isLoading } = useWakaTimeStats();
-  if (isLoading) return <div>Loading WakaTime stats...</div>;
-  if (!stats) return <div>No data</div>;
+
+  if (isLoading) return <WakaTimeSkeleton />;
+  if (!stats) return <div className="text-red">Failed to load WakaTime stats</div>;
+
+  const allTimeHours = (stats.total_seconds / 3600).toFixed(1);
+  const todayHours = (stats.today_seconds / 3600).toFixed(1);
+  const weekHours = (stats.week_seconds / 3600).toFixed(1);
+
+  // Prepare daily breakdown for line chart
+  const dailyData = stats.daily_breakdown?.map(d => ({ date: d.date, hours: (d.seconds / 3600).toFixed(1) })) || [];
+
+  // Prepare language, project, editor data for horizontal bars
+  const langData = stats.languages?.map(l => ({ name: l.name, value: l.percent })) || [];
+  const projectData = stats.projects?.map(p => ({ name: p.name, value: p.hours })) || [];
+  const editorData = stats.editors?.map(e => ({ name: e.name, value: e.percent })) || [];
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">WakaTime Analytics</h1>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard title="Total Coding Time" value={formatTime(stats.total_seconds)} />
-        <StatCard title="Today" value={formatTime(stats.today_seconds)} />
-        <StatCard title="This Week" value={formatTime(stats.week_seconds)} />
-        <StatCard
-          title="Best Day"
-          value={stats.best_day_date ? `${formatTime(stats.best_day_seconds)} (${stats.best_day_date})` : 'N/A'}
-        />
+        <StatCard title="Total Coding Time" value={`${allTimeHours}h`} color="cyan" />
+        <StatCard title="Today" value={`${todayHours}h`} color="cyan" />
+        <StatCard title="This Week" value={`${weekHours}h`} color="cyan" />
+        <StatCard title="Best Day" value={stats.best_day_seconds ? `${(stats.best_day_seconds / 3600).toFixed(1)}h` : '—'} color="amber" />
       </div>
+
+      <LineChart data={dailyData} xKey="date" yKey="hours" title="Daily Coding Hours (Last 30 Days)" color="#06B6D4" />
+
       <div className="grid md:grid-cols-2 gap-6">
-        <DonutChart data={stats.languages} title="Languages" />
-        <DonutChart data={stats.editors} title="Editors" />
+        <HorizontalBarChart data={langData} title="Time by Language (%)" barColor="#A78BFA" />
+        <HorizontalBarChart data={projectData} title="Time by Project (hours)" barColor="#7C3AED" />
       </div>
-      <div className="grid md:grid-cols-2 gap-6">
-        <BarChart
-          data={stats.projects.map((p) => ({ name: p.name, value: p.hours }))}
-          title="Projects (hours)"
-        />
-        <BarChart
-          data={stats.daily_breakdown.slice(-14).map((d) => ({
-            name: d.date.slice(5),
-            value: Math.round(d.seconds / 3600),
-          }))}
-          title="Daily Activity (hours, last 14 days)"
-        />
-      </div>
+
+      <HorizontalBarChart data={editorData} title="Time by Editor (%)" barColor="#F59E0B" />
+    </div>
+  );
+}
+
+function WakaTimeSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-4 gap-4"><Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" /></div>
+      <Skeleton className="h-64" />
     </div>
   );
 }

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from app.workers.celery_app import celery_app
 from app.core.database import AsyncSessionLocal
 from app.models.user import User
+from app.core.redis import redis_client
 from app.models.stats import LeetCodeStats
 from app.integrations.leetcode_client import LeetCodeClient
 from app.services.score_updater import update_user_score
@@ -55,7 +56,7 @@ async def _sync_single_user(user_id: str, leetcode_username: str):
             result = await db.execute(stmt)
             lstats = result.scalar_one_or_none()
             if not lstats:
-                lstats = LeetCodeStats(user_id=user_id, synced_at=datetime.now(timezone.utc))
+                lstats = LeetCodeStats(user_id=user_id, synced_at=datetime.now(timezone.utc).replace(tzinfo=None))
 
             lstats.total_solved = total_solved
             lstats.easy_solved = easy
@@ -68,7 +69,7 @@ async def _sync_single_user(user_id: str, leetcode_username: str):
             lstats.top_languages = top_langs
             lstats.recent_submissions = recent
             lstats.contest_rating = contest_rating
-            lstats.synced_at = datetime.now(timezone.utc)
+            lstats.synced_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.add(lstats)
             await db.commit()
             
@@ -84,6 +85,10 @@ async def _sync_single_user(user_id: str, leetcode_username: str):
             await check_and_award_badges(UUID(user_id), db, None, None, lstats, user)
             recalc_level(user)
             await db.commit()
+            
+            # Clear cache
+            await redis_client.delete(f"dashboard:leetcode:{user_id}")
+            await redis_client.delete(f"dashboard:overview:{user_id}")
             
             logger.info(f"Synced LeetCode stats for user {leetcode_username}")
     except Exception as e:

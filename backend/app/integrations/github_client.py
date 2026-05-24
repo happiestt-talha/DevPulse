@@ -92,7 +92,9 @@ class GitHubClient:
         total_issues_closed = 0
         total_stars_earned = 0
         lang_counter = {}
-        for repo in repos:
+        # Get max 10 repos to avoid rate limits and hanging
+        repo_list = list(repos[:10])
+        for repo in repo_list:
             total_stars_earned += repo.stargazers_count
             try:
                 # get commit count (approximate)
@@ -100,14 +102,19 @@ class GitHubClient:
                 total_commits += commits.totalCount
             except:
                 pass
-            # PRs merged – would need search across repos, skip for now
-            # Issues closed
-            issues = repo.get_issues(state="closed", creator=user)
-            total_issues_closed += issues.totalCount
-            # Languages
-            langs = repo.get_languages()
-            for lang, bytes_ in langs.items():
-                lang_counter[lang] = lang_counter.get(lang, 0) + bytes_
+            try:
+                # Issues closed
+                issues = repo.get_issues(state="closed", creator=user)
+                total_issues_closed += issues.totalCount
+            except:
+                pass
+            try:
+                # Languages
+                langs = repo.get_languages()
+                for lang, bytes_ in langs.items():
+                    lang_counter[lang] = lang_counter.get(lang, 0) + bytes_
+            except:
+                pass
         # top languages by bytes
         total_bytes = sum(lang_counter.values())
         top_langs = []

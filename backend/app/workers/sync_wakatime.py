@@ -4,6 +4,7 @@ from sqlalchemy import select
 from app.workers.celery_app import celery_app
 from app.core.database import AsyncSessionLocal
 from app.core.encryption import decrypt_token
+from app.core.redis import redis_client
 from app.models.user import User
 from app.models.stats import WakaTimeStats
 from app.integrations.wakatime_client import WakaTimeClient
@@ -43,12 +44,12 @@ async def _sync_single_user(user_id: str, wakatime_token_enc: str):
         today_seconds = 0
         week_seconds = 0
         summaries = await client.get_summaries(
-            (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d"),
-            datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
+            datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d")
         )
         for day in summaries.get("data", []):
             secs = day["grand_total"]["total_seconds"]
-            if day["range"]["date"] == datetime.now(timezone.utc).strftime("%Y-%m-%d"):
+            if day["range"]["date"] == datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d"):
                 today_seconds = secs
             week_seconds += secs
 
@@ -61,7 +62,7 @@ async def _sync_single_user(user_id: str, wakatime_token_enc: str):
             result = await db.execute(stmt)
             wstats = result.scalar_one_or_none()
             if not wstats:
-                wstats = WakaTimeStats(user_id=user_id, synced_at=datetime.now(timezone.utc))
+                wstats = WakaTimeStats(user_id=user_id, synced_at=datetime.now(timezone.utc).replace(tzinfo=None))
 
             wstats.total_seconds = total_seconds
             wstats.today_seconds = today_seconds
@@ -73,7 +74,7 @@ async def _sync_single_user(user_id: str, wakatime_token_enc: str):
             if best_day:
                 wstats.best_day_seconds = best_day["seconds"]
                 wstats.best_day_date = best_day["date"]
-            wstats.synced_at = datetime.now(timezone.utc)
+            wstats.synced_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.add(wstats)
             await db.commit()
             
@@ -89,6 +90,10 @@ async def _sync_single_user(user_id: str, wakatime_token_enc: str):
             await check_and_award_badges(UUID(user_id), db, None, wstats, None, user)
             recalc_level(user)
             await db.commit()
+            
+            # Clear cache
+            await redis_client.delete(f"dashboard:wakatime:{user_id}")
+            await redis_client.delete(f"dashboard:overview:{user_id}")
             
             logger.info(f"Synced WakaTime stats for user {user_id}")
     except Exception as e:

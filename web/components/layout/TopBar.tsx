@@ -9,13 +9,12 @@ import Image from 'next/image';
 
 export function TopBar() {
   const user = useAuthStore((state) => state.user);
-  const streakCurrent = user?.streak_current || 0;
 
   return (
     <header className="h-16 border-b border-border bg-surface/50 backdrop-blur-sm px-6 flex items-center justify-between">
       <div className="flex items-center gap-4">
         {user && <LevelBadge level={user.level} totalXp={user.total_xp} />}
-        {user && <StreakCounter streak={streakCurrent} />}
+        <StreakCounter streak={user?.streak_current || 0} longest={user?.streak_longest} freezeCount={user?.streak_freezes} />
       </div>
       <div className="flex items-center gap-4">
         {user?.avatar_url && (

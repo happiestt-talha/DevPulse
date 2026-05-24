@@ -1,6 +1,7 @@
 import logging
 from typing import List, Dict, Any, Optional
 from uuid import UUID
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
@@ -89,6 +90,7 @@ async def check_and_award_badges(user_id: UUID, db: AsyncSession, github: Option
                     description=f"Awarded badge: {badge.name}"
                 )
                 db.add(xp_event)
+                now = datetime.now(timezone.utc).replace(tzinfo=None)
                 user.total_xp += badge.xp_reward
                 newly_awarded.append(badge)
                 logger.info(f"Awarded badge {badge.slug} to user {user_id}")

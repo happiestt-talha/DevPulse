@@ -2,9 +2,16 @@ import { useAuthStore } from './store';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
-export const signInWithGitHub = () => {
-  // Redirect to backend's GitHub OAuth endpoint
-  window.location.href = `${API_BASE}/auth/github`;
+export const signInWithGitHub = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/github`);
+    const data = await res.json();
+    if (data.authorization_url) {
+      window.location.href = data.authorization_url;
+    }
+  } catch (err) {
+    console.error('Failed to initiate GitHub sign-in:', err);
+  }
 };
 
 export const handleAuthCallback = async (code: string) => {
